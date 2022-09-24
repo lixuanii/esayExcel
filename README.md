@@ -10,7 +10,7 @@ EasyExcelUtli，ExcelUtil，Excel统一导入导出实现方案
 所以本demo提供了一个如何抽取这部分流程的**解决思路**。
 
 ### excel导出流程
-1. 导出操作保存至文件导出表中 fileExport 状态为“导入中”
+1. 导出操作保存至文件导出表中 fileExport 状态为“导出中”
 2. 根据条件，查询需要导出的结果
 3. 结果写入excel
    1. 写入成功后上传至oss，fileExport表中更新导出状态为“导出成功”，并且记录oss文件路径
