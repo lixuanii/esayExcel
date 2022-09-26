@@ -41,6 +41,20 @@ public class ExcelWriteDto<T,R> {
 	 */
 	private String fileType = "xlsx";
 
+	/**
+	 * 合并单元格标识
+	 */
+	private boolean mergeColumnFlag;
+	/**
+	 * 合并列
+	 */
+	private int[] mergeColumnIndex;
+	/**
+	 * 从哪一行开始合并 默认第一行
+	 */
+	private int mergeRowIndex = 1;
+
+
 	public int isVerifyFlag() {
 		return verifyFlag ? 1 : 0;
 	}
