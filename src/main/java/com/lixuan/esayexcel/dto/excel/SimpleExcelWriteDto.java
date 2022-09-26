@@ -14,7 +14,7 @@ import java.util.List;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class SimpleExcelWriteDto<T, R> extends ExcelWriteDto<T, R> {
+public class SimpleExcelWriteDto<T, R> extends ExcelWriteDto<T> {
 
     /**
      * 导出结果

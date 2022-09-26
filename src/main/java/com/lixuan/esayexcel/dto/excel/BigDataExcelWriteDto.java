@@ -13,7 +13,7 @@ import lombok.EqualsAndHashCode;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class BigDataExcelWriteDto<T,R> extends ExcelWriteDto<T,R> {
+public class BigDataExcelWriteDto<T,R> extends ExcelWriteDto<T> {
 
 	/**
 	 * 总共数量

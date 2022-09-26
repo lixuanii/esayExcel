@@ -3,6 +3,8 @@ package com.lixuan.esayexcel.dto.excel;
 import com.lixuan.esayexcel.enums.OaSystemModuleNameEnum;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * excel 导出dto
  *
@@ -10,7 +12,7 @@ import lombok.Data;
  * @date 2022-09-21 13:38
  */
 @Data
-public class ExcelWriteDto<T,R> {
+public class ExcelWriteDto<T> {
 
 	/**
 	 * 导出类
@@ -53,7 +55,14 @@ public class ExcelWriteDto<T,R> {
 	 * 从哪一行开始合并 默认第一行
 	 */
 	private int mergeRowIndex = 1;
-
+	/**
+	 * 冻结标识
+	 */
+	private boolean freezePaneFlag;
+	/**
+	 * 隐藏列 下标
+	 */
+	private List<Integer> hiddenIndices;
 
 	public int isVerifyFlag() {
 		return verifyFlag ? 1 : 0;

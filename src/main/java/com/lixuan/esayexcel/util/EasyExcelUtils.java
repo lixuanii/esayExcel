@@ -17,18 +17,17 @@ import com.lixuan.esayexcel.dto.excel.BigDataExcelWriteDto;
 import com.lixuan.esayexcel.dto.excel.ExcelWriteDto;
 import com.lixuan.esayexcel.dto.excel.SimpleExcelWriteDto;
 import com.lixuan.esayexcel.dto.excel.WriteExcelResult;
-import com.lixuan.esayexcel.handler.ExcelMergeHandler;
+import com.lixuan.esayexcel.handler.CustomFreezeRowColHandler;
 import com.lixuan.esayexcel.handler.ExcelWidthStyleStrategy;
+import com.lixuan.esayexcel.handler.SheetHandler;
 import com.lixuan.esayexcel.handler.WaterMarkHandler;
 import com.lixuan.esayexcel.service.excel.ExcelWriteService;
 import com.lixuan.esayexcel.service.FileExportService;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Resource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -108,32 +107,32 @@ public class EasyExcelUtils {
 //    private void doSomething(){
 //
 //    }
-
-    private <T, R> void updateFileExport(ExcelWriteDto<T, R> dto, CompletableFuture<FileExport> fileExportFuture, CompletableFuture<WriteExcelResult> writeExcelResultFuture) throws ExecutionException, InterruptedException {
-        if (fileExportFuture.isDone() && writeExcelResultFuture.isDone()) {
-            FileExport fileExport = fileExportFuture.get();
-            WriteExcelResult result = writeExcelResultFuture.get();
-            if (result.getInputStream() != null) {
-                String filePath = getFilePath(dto.getFileName(), dto.getModel().getModule(), dto.getFileType());
-                if (StrUtil.isBlank(filePath)) {
-                    log.error("EasyExcelUtils.exportAndUpload.getFilePath 文件导出并上传,获取上传路径失败,fileName:{},model:{},fileType:{}", dto.getFileName(), dto.getModel(), dto.getFileType());
-                    return;
-                }
-                AliYunOssUtil.uploadToOss(filePath, result.getInputStream());
-                fileExport.setFileUrl(filePath);
-                fileExport.setOssPath(AliYunOssUtil.getObjectOssUrl(filePath));
-                fileExport.setExportResult("导出成功");
-                log.info("文件导出成功,path:{}", fileExport.getOssPath());
-            } else {
-                fileExport.setExportResult("导出失败:" + result.getErrMsg());
-            }
-            fileExportService.updateById(fileExport);
-        }
-    }
+//
+//    private <T> void updateFileExport(ExcelWriteDto<T> dto, CompletableFuture<FileExport> fileExportFuture, CompletableFuture<WriteExcelResult> writeExcelResultFuture) throws ExecutionException, InterruptedException {
+//        if (fileExportFuture.isDone() && writeExcelResultFuture.isDone()) {
+//            FileExport fileExport = fileExportFuture.get();
+//            WriteExcelResult result = writeExcelResultFuture.get();
+//            if (result.getInputStream() != null) {
+//                String filePath = getFilePath(dto.getFileName(), dto.getModel().getModule(), dto.getFileType());
+//                if (StrUtil.isBlank(filePath)) {
+//                    log.error("EasyExcelUtils.exportAndUpload.getFilePath 文件导出并上传,获取上传路径失败,fileName:{},model:{},fileType:{}", dto.getFileName(), dto.getModel(), dto.getFileType());
+//                    return;
+//                }
+//                AliYunOssUtil.uploadToOss(filePath, result.getInputStream());
+//                fileExport.setFileUrl(filePath);
+//                fileExport.setOssPath(AliYunOssUtil.getObjectOssUrl(filePath));
+//                fileExport.setExportResult("导出成功");
+//                log.info("文件导出成功,path:{}", fileExport.getOssPath());
+//            } else {
+//                fileExport.setExportResult("导出失败:" + result.getErrMsg());
+//            }
+//            fileExportService.updateById(fileExport);
+//        }
+//    }
 
 
     @Transactional(rollbackFor = Exception.class)
-    public <T, R> void exportAndUpload(ExcelWriteDto<T, R> dto) {
+    public <T, R> void exportAndUpload(ExcelWriteDto<T> dto) {
         if (this.checkDtoErr(dto)) {
             return;
         }
@@ -217,12 +216,16 @@ public class EasyExcelUtils {
             ExcelWriterBuilder builder = EasyExcel.write(outputStream)
                     .inMemory(true)
                     .registerWriteHandler(new WaterMarkHandler(watermark(dto.getModel().getDesc(), dto.getRealName())))
-                    .registerWriteHandler(new ExcelWidthStyleStrategy());
-            if (dto.isMergeColumnFlag()) {
-                builder.registerWriteHandler(new ExcelMergeHandler(dto.getMergeRowIndex(), dto.getMergeColumnIndex()));
+                    .registerWriteHandler(new ExcelWidthStyleStrategy())
+                    .registerWriteHandler(new SheetHandler(dto.getHiddenIndices()));
+            if (dto.isFreezePaneFlag()) {
+                builder.registerWriteHandler(new CustomFreezeRowColHandler());
             }
             ExcelWriter excelWriter = builder.build();
-            WriteSheet sheet;
+            WriteSheet sheet = EasyExcel.writerSheet(dto.getSheetName())
+                    .head(dto.getClazz())
+                    .includeColumnFieldNames(this.includeColumnFiledNames(dto.getClazz()))
+                    .build();
             List<R> list;
             for (int i = 1; i <= page; i++) {
                 list = excelWriteService.getPageList(i, size);
@@ -231,9 +234,6 @@ public class EasyExcelUtils {
                     result.setErrMsg("导出失败,查询记录为空");
                     return result;
                 }
-                sheet = EasyExcel.writerSheet(dto.getSheetName()).head(dto.getClazz())
-                        .includeColumnFieldNames(this.includeColumnFiledNames(dto.getClazz()))
-                        .build();
                 excelWriter.write(list, sheet);
             }
             excelWriter.close();
@@ -263,18 +263,17 @@ public class EasyExcelUtils {
             return result;
         }
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-
+            // 构建excel写入
             ExcelWriterBuilder builder = EasyExcel.write(outputStream)
                     .inMemory(true)
                     .registerWriteHandler(new WaterMarkHandler(watermark(dto.getModel().getDesc(), dto.getRealName())))
                     .registerWriteHandler(new ExcelWidthStyleStrategy())
+                    .registerWriteHandler(new SheetHandler(dto.getHiddenIndices()))
                     .includeColumnFieldNames(this.includeColumnFiledNames(dto.getClazz()));
-            if (dto.isMergeColumnFlag()) {
-                builder.registerWriteHandler(new ExcelMergeHandler(dto.getMergeRowIndex(), dto.getMergeColumnIndex()));
+            if (dto.isFreezePaneFlag()) {
+                builder.registerWriteHandler(new CustomFreezeRowColHandler());
             }
-            // 构建excel写入
             builder.sheet(dto.getSheetName()).doWrite(dto.getData());
-            
             result.setInputStream(new ByteArrayInputStream(outputStream.toByteArray()));
             return result;
         } catch (Exception e) {
@@ -352,7 +351,7 @@ public class EasyExcelUtils {
      * @author lixuan
      * @date 2022/9/22 17:56
      **/
-    private <T, R> boolean checkDtoErr(ExcelWriteDto<T, R> dto) {
+    private <T> boolean checkDtoErr(ExcelWriteDto<T> dto) {
         if (dto == null) {
             log.error("EasyExcelUtils.checkDto dto isNull,导出-->dto为空");
             return true;
@@ -380,7 +379,7 @@ public class EasyExcelUtils {
      * @author lixuan
      * @date 2022/9/23 11:59
      **/
-    private <T, R> FileExport buildSaveFileExport(ExcelWriteDto<T, R> dto) {
+    private <T> FileExport buildSaveFileExport(ExcelWriteDto<T> dto) {
         FileExport fileExport = new FileExport();
         fileExport.setExportResult("文件导出中");
         fileExport.setOperationModule(dto.getModel() != null ? dto.getModel().getDesc() : null);
