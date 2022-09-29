@@ -61,22 +61,22 @@ public class EasyExcelUtils {
     @Autowired
     private FileExportService fileExportService;
 
-//    private static ExecutorService ossAsyncServiceExecutor;
-//
-//    static {
-//        val cpuSize = Runtime.getRuntime().availableProcessors();
-//        ossAsyncServiceExecutor = new ThreadPoolExecutor(
-//                cpuSize + 1,
-//                cpuSize * 3,
-//                60,
-//                TimeUnit.MILLISECONDS,
-//                new ArrayBlockingQueue<>(200),
-//                Executors.defaultThreadFactory(),
-//                new ThreadPoolExecutor.CallerRunsPolicy()
-//        );
-//    }
-//
-//
+    private static ExecutorService ossAsyncServiceExecutor;
+
+    static {
+        int cpuSize = Runtime.getRuntime().availableProcessors();
+        ossAsyncServiceExecutor = new ThreadPoolExecutor(
+                cpuSize + 1,
+                cpuSize * 3,
+                60,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(200),
+                Executors.defaultThreadFactory(),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+    }
+
+
 //    private <T, R> CompletableFuture<FileExport> fileExportFuture(ExcelWriteDto<T, R> dto) {
 //        return CompletableFuture.supplyAsync(() -> {
 //            FileExport fileExport = this.buildSaveFileExport(dto);
