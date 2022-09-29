@@ -35,7 +35,17 @@ public class WaterMarkHandler implements SheetWriteHandler {
 
 	private final String WATER_MARK;
 
-	public static ByteArrayOutputStream createWaterMark(String content) throws IOException, FontFormatException {
+
+	@SneakyThrows
+	@Override
+	public void afterSheetCreate(WriteWorkbookHolder writeWorkbookHolder, WriteSheetHolder writeSheetHolder) {
+		try (ByteArrayOutputStream waterMark = createWaterMark(WATER_MARK)) {
+			XSSFSheet sheet = (XSSFSheet) writeSheetHolder.getSheet();
+			putWaterRemarkToExcel(sheet, waterMark.toByteArray());
+		}
+	}
+
+	private static ByteArrayOutputStream createWaterMark(String content) throws IOException, FontFormatException {
 		Resource resource = new ClassPathResource("font/msyh.ttf");
 		InputStream fi = resource.getInputStream();
 		BufferedInputStream fb = new BufferedInputStream(fi);
@@ -78,29 +88,18 @@ public class WaterMarkHandler implements SheetWriteHandler {
 		return os;
 	}
 
-
 	/**
 	 * 为Excel打上水印工具函数
 	 *
 	 * @param sheet excel sheet
 	 * @param bytes 水印图片字节数组
 	 */
-	public static void putWaterRemarkToExcel(XSSFSheet sheet, byte[] bytes) {
+	private static void putWaterRemarkToExcel(XSSFSheet sheet, byte[] bytes) {
 		XSSFWorkbook workbook = sheet.getWorkbook();
 		int pictureIdx = workbook.addPicture(bytes, Workbook.PICTURE_TYPE_PNG);
 		String rID = sheet.addRelation(null, XSSFRelation.IMAGES, workbook.getAllPictures().get(pictureIdx))
 			.getRelationship().getId();
 		sheet.getCTWorksheet().addNewPicture().setId(rID);
-	}
-
-
-	@SneakyThrows
-	@Override
-	public void afterSheetCreate(WriteWorkbookHolder writeWorkbookHolder, WriteSheetHolder writeSheetHolder) {
-		try (ByteArrayOutputStream waterMark = createWaterMark(WATER_MARK)) {
-			XSSFSheet sheet = (XSSFSheet) writeSheetHolder.getSheet();
-			putWaterRemarkToExcel(sheet, waterMark.toByteArray());
-		}
 	}
 
 

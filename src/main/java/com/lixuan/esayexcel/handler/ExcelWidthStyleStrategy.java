@@ -26,6 +26,8 @@ public class ExcelWidthStyleStrategy extends AbstractColumnWidthStyleStrategy {
 	// 适当增加宽度，能避免 数字显示为 * 的问题
 	public static final int DEFAULT = 2;
 
+	public static final int MAX = 50;
+
 	@Override
 	protected void setColumnWidth(WriteSheetHolder writeSheetHolder, List<WriteCellData<?>> cellDataList, Cell cell, Head head, Integer relativeRowIndex, Boolean isHead) {
 		boolean needSetWidth = isHead || !CollUtil.isEmpty(cellDataList);
@@ -35,7 +37,7 @@ public class ExcelWidthStyleStrategy extends AbstractColumnWidthStyleStrategy {
 			Integer columnWidth = this.dataLength(cellDataList, cell, isHead);
 			if (columnWidth >= 0) {
 				if (columnWidth > 255) {
-					columnWidth = 255;
+					columnWidth = MAX;
 				}
 
 				Integer maxColumnWidth = maxColumnWidthMap.get(cell.getColumnIndex());

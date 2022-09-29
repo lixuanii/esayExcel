@@ -3,8 +3,6 @@ package com.lixuan.esayexcel.dto.excel;
 import com.lixuan.esayexcel.enums.OaSystemModuleNameEnum;
 import lombok.Data;
 
-import java.util.List;
-
 /**
  * excel 导出dto
  *
@@ -42,27 +40,20 @@ public class ExcelWriteDto<T> {
 	 * 文件类型
 	 */
 	private String fileType = "xlsx";
+	/**
+	 * sheet设置
+	 */
+	private SheetSettingsDto sheetDto;
 
 	/**
-	 * 合并单元格标识
+	 * 合并单元格 列
 	 */
-	private boolean mergeColumnFlag;
+	private MergeColumnByColDto mergeColumnByColDto;
 	/**
-	 * 合并列
+	 * 合并单元格 行
 	 */
-	private int[] mergeColumnIndex;
-	/**
-	 * 从哪一行开始合并 默认第一行
-	 */
-	private int mergeRowIndex = 1;
-	/**
-	 * 冻结标识
-	 */
-	private boolean freezePaneFlag;
-	/**
-	 * 隐藏列 下标
-	 */
-	private List<Integer> hiddenIndices;
+	private MergeColumnByRowDto mergeColumnByRowDto;
+
 
 	public int isVerifyFlag() {
 		return verifyFlag ? 1 : 0;
