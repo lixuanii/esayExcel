@@ -36,7 +36,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     public void exportExcel(Customer condition) {
 
         CompletableFuture.runAsync(() -> {
-            BigDataExcelWriteDto<CustomerExportDto, Customer> dto = new BigDataExcelWriteDto<>();
+            BigDataExcelWriteDto<CustomerExportDto> dto = new BigDataExcelWriteDto<>();
             LambdaQueryWrapper<Customer> wrapper = this.buildWrapper(condition);
             dto.setCount(super.count(wrapper));
             dto.setExcelWriteService(new CustomerExportServiceImpl(wrapper));

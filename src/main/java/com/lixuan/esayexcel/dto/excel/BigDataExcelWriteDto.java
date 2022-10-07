@@ -7,14 +7,13 @@ import lombok.EqualsAndHashCode;
 
 /**
  * T 导出类
- * R service查询类
  *
  * @author lixuan
  * @date 2022-09-22 10:47
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class BigDataExcelWriteDto<T, R> extends ExcelWriteDto<T> {
+public class BigDataExcelWriteDto<T> extends ExcelWriteDto<T> {
 
 	/**
 	 * 总共数量
@@ -24,7 +23,7 @@ public class BigDataExcelWriteDto<T, R> extends ExcelWriteDto<T> {
 	/**
 	 * service
 	 */
-	private ExcelWriteService<R> excelWriteService;
+	private ExcelWriteService<T> excelWriteService;
 
 	/**
 	 * 每页查询数量

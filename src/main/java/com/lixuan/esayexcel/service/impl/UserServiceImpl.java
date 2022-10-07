@@ -1,5 +1,6 @@
 package com.lixuan.esayexcel.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -42,9 +43,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.info("导出失败！暂无匹配数据");
         }
         CompletableFuture.runAsync(() -> {
-            SimpleExcelWriteDto<UserExportDto, User> dto = new SimpleExcelWriteDto<>();
+            SimpleExcelWriteDto<UserExportDto> dto = new SimpleExcelWriteDto<>();
             dto.setClazz(UserExportDto.class);
-            dto.setData(userList);
+            dto.setData(BeanUtil.copyToList(userList,UserExportDto.class));
             dto.setModel(OaSystemModuleNameEnum.USER_INFO);
             dto.setRealName("当前登录人");
             dto.setFileName("用户数据");
