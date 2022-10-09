@@ -217,7 +217,7 @@ public class EasyExcelUtils {
             List<Callable<List<T>>> task = new CopyOnWriteArrayList<>();
             for (int i = 0; i < page; i++) {
                 int finalI = i;
-                task.add(() -> excelWriteService.getPageList(finalI, size));
+                task.add(() -> excelWriteService.getPageList(finalI + 1, size));
             }
             List<Future<List<T>>> futures = bigDataWriteExecutor.invokeAll(task);
             WriteSheet writeSheet = EasyExcel.writerSheet(dto.getSheetName()).build();
