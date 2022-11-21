@@ -30,11 +30,8 @@ public class AliYunOssUtil {
      */
     private static final String BUCKET_NAME = "your bucket name";
 
-    private static final OSS oss;
+    private static final OSS OSS = new OSSClientBuilder().build(ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET);
 
-    static {
-        oss = new OSSClientBuilder().build(ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET);
-    }
 
     /**
      * 上传文件到oss
@@ -44,9 +41,9 @@ public class AliYunOssUtil {
      */
     public static void uploadToOss(String fileName, InputStream inputStream) {
         try {
-            oss.putObject(BUCKET_NAME, fileName, inputStream);
+            OSS.putObject(BUCKET_NAME, fileName, inputStream);
         } finally {
-            oss.shutdown();
+            OSS.shutdown();
         }
     }
 
@@ -60,10 +57,10 @@ public class AliYunOssUtil {
         String ossUrl;
         try {
             //生成以get方式访问的签名url，可以通过浏览器直接访问相关内容
-            URL url = oss.generatePresignedUrl(BUCKET_NAME, fileName, DateUtil.parse("2099-12-30"));
+            URL url = OSS.generatePresignedUrl(BUCKET_NAME, fileName, DateUtil.parse("2099-12-30"));
             ossUrl = url.toString();
         } finally {
-            oss.shutdown();
+            OSS.shutdown();
         }
         return ossUrl;
     }

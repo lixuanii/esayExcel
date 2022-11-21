@@ -31,16 +31,12 @@ import org.springframework.stereotype.Component;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -57,19 +53,25 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class EasyExcelUtils {
 
+
+    @Autowired
+    private FileExportService fileExportService;
+
     /**
      * 默认最大导出限制数量
      */
     public static final int MAX_SIZE = 10000;
 
-    @Autowired
-    private FileExportService fileExportService;
+    private static final String XLS = "xls";
 
-    private static ExecutorService bigDataWriteExecutor;
+    private static final String XLSX = "xlsx";
+
+
+    private static final ExecutorService BIG_DATA_WRITE_EXECUTOR;
 
     static {
         int cpuSize = Runtime.getRuntime().availableProcessors();
-        bigDataWriteExecutor = new ThreadPoolExecutor(
+        BIG_DATA_WRITE_EXECUTOR = new ThreadPoolExecutor(
                 cpuSize + 1,
                 cpuSize * 3,
                 60,
@@ -80,51 +82,8 @@ public class EasyExcelUtils {
         );
     }
 
-//    public <T, R> void doSomething(ExcelWriteDto<T> dto, FileExport fileExport) {
-//
-//
-//        CompletableFuture.supplyAsync(() -> {
-//            WriteExcelResult result = null;
-//            if (dto instanceof BigDataExcelWriteDto) {
-//                result = this.bigDataWriteExcel((BigDataExcelWriteDto<T, R>) dto);
-//            } else if (dto instanceof SimpleExcelWriteDto) {
-//                result = this.simpleWriteExcel((SimpleExcelWriteDto<T, R>) dto);
-//            }
-//            if (result == null) {
-//                log.error("EasyExcelUtils.exportAndUpload.WriteExcel 文件导出并上传 文件写入至excel失败,dto:{}", dto);
-//            }
-//            return result;
-//        }).thenApply(result -> {
-//            if (result == null) {
-//                return fileExport;
-//            }
-//            if (result.getInputStream() != null) {
-//                String filePath = getFilePath(dto.getFileName(), dto.getModel().getModule(), dto.getFileType());
-//                if (StrUtil.isBlank(filePath)) {
-//                    log.error("EasyExcelUtils.exportAndUpload.getFilePath 文件导出并上传,获取上传路径失败,fileName:{},model:{},fileType:{}", dto.getFileName(), dto.getModel(), dto.getFileType());
-//                    return fileExport;
-//                }
-//                AliYunOssUtil.uploadToOss(filePath, result.getInputStream());
-//                fileExport.setFileUrl(AliYunOssUtil.getObjectOssUrl(filePath));
-//                fileExport.setOssPath(filePath);
-//                fileExport.setExportResult("导出成功");
-//                log.info("文件导出成功,path:{}", fileExport.getFileUrl());
-//            } else {
-//                fileExport.setExportResult("导出失败:" + result.getErrMsg());
-//            }
-//            return fileExport;
-//        }).thenApply(fileExports -> {
-//            return fileExportService.updateById(fileExport);
-//        }).thenAccept( flag->{
-//            return;
-//        }).thenCompose(t->{
-//            final var t1 = t;
-//
-//        },ossAsyncServiceExecutor);
-//    }
 
-
-    public <T, R> void exportAndUpload(ExcelWriteDto<T> dto) {
+    public <T> void exportAndUpload(ExcelWriteDto<T> dto) {
         if (this.checkDtoErr(dto)) {
             return;
         }
@@ -210,7 +169,7 @@ public class EasyExcelUtils {
                     .registerWriteHandler(new ExcelMergeRowHandler(dto.getMergeColumnByRowDto()))
                     .registerWriteHandler(new SheetHandler(dto.getSheetDto()));
             if (count < MAX_SIZE) {
-                // 数据超过指定值不添加水印，原因是因为添加水印需要将数据写入内存,而数据过多会OOM
+                // 数据超过指定值不添加水印，因为添加水印需要将数据写入内存,而数据过多会OOM
                 builder.inMemory(true).registerWriteHandler(new WaterMarkHandler(watermark(dto.getModel().getDesc(), dto.getRealName())));
             }
             ExcelWriter excelWriter = builder.build();
@@ -219,7 +178,7 @@ public class EasyExcelUtils {
                 int finalI = i;
                 task.add(() -> excelWriteService.getPageList(finalI + 1, size));
             }
-            List<Future<List<T>>> futures = bigDataWriteExecutor.invokeAll(task);
+            List<Future<List<T>>> futures = BIG_DATA_WRITE_EXECUTOR.invokeAll(task);
             WriteSheet writeSheet = EasyExcel.writerSheet(dto.getSheetName()).build();
             List<T> list;
             for (int i = 0; i < page; i++) {
@@ -236,88 +195,6 @@ public class EasyExcelUtils {
         }
         return result;
     }
-
-
-//    /**
-//     * 分页导出excel数据
-//     *
-//     * @param dto 条件
-//     * @return WriteExcelResult
-//     * @author lixuan
-//     * @date 2022/9/22 17:56
-//     **/
-//    private <T> WriteExcelResult bigDataWriteExcel(BigDataExcelWriteDto<T> dto) {
-//        WriteExcelResult result = new WriteExcelResult();
-//        if (this.checkDtoErr(dto)) {
-//            result.setErrMsg(String.format("dto参数异常,dto:%s", dto));
-//            return result;
-//        }
-//        // 根据条件查询出来的总数
-//        long count = dto.getCount();
-//        if (count <= 0) {
-//            result.setErrMsg("未查询到数据");
-//            return result;
-//        }
-//        ExcelWriteService<T> excelWriteService = dto.getExcelWriteService();
-//        if (excelWriteService == null) {
-//            log.error("EasyExcelUtils.bigDataWriteExcel.ExcelWriteService isNull");
-//            return result;
-//        }
-//        dto.setMaxSize(dto.getMaxSize() == null || dto.getMaxSize() == 0 ? MAX_SIZE : dto.getMaxSize());
-//        if (dto.getCount() > dto.getMaxSize()) {
-//            result.setErrMsg(String.format("导出数据超出最大记录数%s,查询数%s", dto.getMaxSize(), dto.getCount()));
-//            return result;
-//        }
-//        long size = dto.getSize();
-//        // 分页数(页数、循环次数) = 总数 / 每页显示的条数
-//        int page;
-//        if (count % size == 0) {
-//            page = Math.toIntExact(count / size);
-//        } else {
-//            page = Math.toIntExact(count / size + 1);
-//        }
-//        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-//            ExcelWriterBuilder builder = EasyExcel.write(outputStream, dto.getClazz())
-//                    .inMemory(true)
-//                    .registerWriteHandler(new WaterMarkHandler(watermark(dto.getModel().getDesc(), dto.getRealName())))
-//                    .registerWriteHandler(new ExcelWidthStyleStrategy())
-//                    .registerWriteHandler(new ExcelMergeColHandler(dto.getMergeColumnByColDto()))
-//                    .registerWriteHandler(new ExcelMergeRowHandler(dto.getMergeColumnByRowDto()))
-//                    .registerWriteHandler(new SheetHandler(dto.getSheetDto()));
-//            ExcelWriter excelWriter = builder.build();
-//            WriteSheet sheet = EasyExcel.writerSheet(dto.getSheetName())
-//                    .head(dto.getClazz())
-//                    .build();
-//            // 不可以丢入list中，数据量太大直接OOM
-//            List<Callable<List<T>>> tasks = new ArrayList<>(page);
-//            for (int i = 1; i <= page; i++) {
-//                int finalI = i;
-//                tasks.add(() -> excelWriteService.getPageList(finalI, size));
-//                excelWriter.write(() -> excelWriteService.getPageList(finalI, size), sheet);
-//            }
-//            List<Future<List<T>>> futures = bigDataWriteExecutor.invokeAll(tasks);
-//            if (CollUtil.isEmpty(futures)) {
-//                excelWriter.close();
-//                result.setErrMsg("导出失败,查询记录为空");
-//                return result;
-//            }
-//            futures.stream().filter(Objects::nonNull).forEach(item -> {
-//                try {
-//                    excelWriter.write(item.get(), sheet);
-//                } catch (InterruptedException | ExecutionException e) {
-//                    excelWriter.close();
-//                    result.setErrMsg("导出失败,写入excel出现异常,e" + e.getMessage());
-//                    throw new RuntimeException(e);
-//                }
-//            });
-//            excelWriter.close();
-//            result.setInputStream(new ByteArrayInputStream(outputStream.toByteArray()));
-//        } catch (Exception e) {
-//            result.setErrMsg(e.getMessage());
-//            e.printStackTrace();
-//        }
-//        return result;
-//    }
 
 
     /**
@@ -437,12 +314,13 @@ public class EasyExcelUtils {
         } else if (StrUtil.isBlank(dto.getRealName())) {
             log.error("EasyExcelUtils.checkDto realName isNull,导出-->操作人name为空");
             return true;
-        } else if (!Objects.equals(dto.getFileType(), "xls") && !Objects.equals(dto.getFileType(), "xlsx")) {
+        } else if (!XLS.equals(dto.getFileType()) && !XLSX.equals(dto.getFileType())) {
             log.error("EasyExcelUtils.checkDto fileType error,导出-->文件类型异常,fileType:{}", dto.getFileType());
             return true;
         }
         return false;
     }
+
 
     /**
      * 构建文件导出实体
@@ -474,5 +352,6 @@ public class EasyExcelUtils {
         int randomInt = RandomUtil.randomInt(100, 999);
         return dataTime + "-" + randomInt;
     }
+
 
 }
